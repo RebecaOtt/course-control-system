@@ -16,148 +16,151 @@ public class Main {
         EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("postgres");
         EntityManager entityManager = entityManagerFactory.createEntityManager();
 
-//        Student student = new Student();
-//        System.out.println("0- Cadastrar aluno, 1- Listar aluno, 2- Buscar aluno");
-//        int studentOption = scanner.nextInt();
-//
-//        if (studentOption < 0 || studentOption > 2){
-//            System.out.println("Opção inválida");
-//        } else {
-//            switch (studentOption) {
-//                case 0:
-//                    System.out.println("Digite seu nome:");
-//                    scanner.nextLine();
-//                    String studentName = scanner.nextLine();
-//                    student.setName(studentName);
-//
-//                    System.out.println("Digite seu email:");
-//                    String studentEmail = scanner.next();
-//                    student.setEmail(studentEmail);
-//
-//                    System.out.println("Digite sua data de nascimento:");
-//                    String date = scanner.next();
-//                    try {
-//                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-//                        LocalDate dateOfBirth = LocalDate.parse(date, formatter);
-//                        student.setDateOfBirth(dateOfBirth);
-//                    } catch (Exception e) {
-//                        System.out.println("Data inválida, use o formato dd/MM/yyyy");
-//                        break;
-//                    }
-//
-//                    entityManager.getTransaction().begin(); //inicia transição
-//                    entityManager.persist(student); //marca o objeto para salvar
-//                    entityManager.getTransaction().commit(); //insere o aluno no bd
-//
-//                    System.out.println("Aluno cadastrado com sucesso!");
-//                    break;
-//                case 1:
-//
-//                    entityManager.getTransaction().begin();
-//                    List<Student> studentsList = entityManager.createQuery("SELECT students FROM Student students", Student.class).getResultList();
-//
-//                    for (Student students : studentsList) {
-//                        System.out.println("ID: " + students.getId());
-//                        System.out.println("Nome: " + students.getName());
-//                        System.out.println("Email: " + students.getEmail());
-//                        System.out.println("Data de nascimento: " + students.getDateOfBirth());
-//                        System.out.println("------------------------");
-//                    }
-//                    entityManager.getTransaction().commit();
-//                    break;
-//                default:
-//                    System.out.println("Digite seu email:");
-//                    String searchEmail = scanner.next();
-//
-//                    entityManager.getTransaction().begin();
-//
-//                    List<Student> students = entityManager
-//                            .createQuery("SELECT searchStudents FROM Student searchStudents WHERE searchStudents.email = :email", Student.class)
-//                            .setParameter("email", searchEmail)
-//                            .getResultList();
-//
-//                    if (students.isEmpty()) {
-//                        System.out.println("Aluno não encontrado.");
-//                    } else {
-//                        for (Student searchStudents : students) {
-//                            System.out.println("Nome: " + searchStudents.getName());
-//                            System.out.println("Email: " + searchStudents.getEmail());
-//                            System.out.println("Data: " + searchStudents.getDateOfBirth());
-//                        }
-//                    }
-//                    entityManager.getTransaction().commit();
-//            }
-//
-//            entityManager.close();
-//            entityManagerFactory.close();
-//        }
+        int menu;
+        do {
+            //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
 
+            System.out.println("1- Gerenciar alunos, 2- Gerenciar cursos, 3- Gerenciar matriculas, 4- Sair");
+            menu = scanner.nextInt();
+
+            if (menu < 1 || menu > 4) {
+                System.out.println("Opção inválida");
+            } else if (menu == 1) {
+                sueStudent(scanner, entityManager);
+            } else if (menu == 2) {
+                sueCourse(scanner, entityManager);
+            }
+        } while (menu != 4);
+
+        entityManager.close();
+        entityManagerFactory.close();
+        System.out.println("Sistema encerrado");
+
+    }
+
+    public static void sueStudent (Scanner scanner, EntityManager entityManager) {
+        Student student = new Student();
+        System.out.println("0- Cadastrar aluno, 1- Listar aluno, 2- Buscar aluno");
+        int studentOption = scanner.nextInt();
+        scanner.nextLine();
+
+        if (studentOption < 0 || studentOption > 2){
+            System.out.println("Opção inválida");
+        } else {
+            if (studentOption == 0) {
+                System.out.println("Digite seu nome:");
+                student.setName(scanner.nextLine());
+
+                System.out.println("Digite seu email:");
+                student.setEmail(scanner.next());
+
+                System.out.println("Digite sua data de nascimento (dd/MM/yyyy):");
+                try{
+                    entityManager.getTransaction().begin();
+
+                    student.setDateOfBirth(LocalDate.parse(scanner.next(), DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                    entityManager.persist(student);
+
+                    entityManager.getTransaction().commit();
+                    System.out.println("Aluno cadastrado");
+                } catch (Exception e) {
+                    System.out.println("Data inválida");
+
+                    if (entityManager.getTransaction().isActive()) {
+                        entityManager.getTransaction().rollback();
+                    }
+                }
+            } else if (studentOption == 1) {
+                List<Student> studentsList = entityManager
+                        .createQuery("SELECT students FROM Student students", Student.class).getResultList();
+
+                if (studentsList.isEmpty()) {
+                    System.out.println("Nenhum aluno cadastrado.");
+                } else {
+                    studentsList.forEach(item ->
+                            System.out.printf("Nome: %s, Email: %s, Data de nascimento: %s\n",item.getName(), item.getEmail(),item.getDateOfBirth()));
+                }
+            } else {
+                System.out.println("Digite seu email:");
+                String searchEmail = scanner.next();
+
+                List<Student> students = entityManager
+                        .createQuery("SELECT searchStudents FROM Student searchStudents WHERE searchStudents.email = :email", Student.class)
+                        .setParameter("email", searchEmail)
+                        .getResultList();
+
+                if (students.isEmpty()) {
+                    System.out.println("Aluno não encontrado.");
+                } else {
+                    students.forEach(item ->
+                            System.out.printf("Nome: %s, Email: %s, Data de nascimento: %s\n",item.getName(), item.getEmail(),item.getDateOfBirth()));
+                }
+            }
+        }
+    }
+
+    public static void sueCourse (Scanner scanner, EntityManager entityManager) {
         Course course = new Course();
         System.out.println("0- Cadastrar curso, 1- Listar curso, 2- Buscar curso");
         int courseOption = scanner.nextInt();
+        scanner.nextLine();
 
         if (courseOption < 0 || courseOption > 2){
             System.out.println("Opção inválida");
         } else {
-            switch (courseOption) {
-                case 0:
-                    System.out.println("Digite o nome do seu curso:");
-                    scanner.nextLine();
-                    String courseName = scanner.nextLine();
-                    course.setName(courseName);
+            if (courseOption == 0) {
+                System.out.println("Digite o nome do seu curso:");
+                course.setName(scanner.nextLine());
 
-                    System.out.println("Digite a descrição de seu curso:");
-                    String courseDescription = scanner.nextLine();
-                    course.setDescription(courseDescription);
+                System.out.println("Digite a descrição de seu curso:");
+                course.setDescription(scanner.nextLine());
 
-                    System.out.println("Digite a carga horária do curso:");
-                    int courseWorkload = scanner.nextInt();
-                    course.setWorkload(courseWorkload);
+                System.out.println("Digite a carga horária do curso:");
+                course.setWorkload(scanner.nextInt());
 
-                    entityManager.getTransaction().begin(); //inicia transição
-                    entityManager.persist(course); //marca o objeto para salvar
-                    entityManager.getTransaction().commit(); //insere o aluno no bd
-
-                    System.out.println("Curso cadastrado com sucesso!");
-                    break;
-                case 1:
+                try {
                     entityManager.getTransaction().begin();
-                    List<Course> courseList = entityManager.createQuery("SELECT courses FROM Course courses", Course.class).getResultList();
+                    entityManager.persist(course);
 
-                    for (Course courses : courseList) {
-                        System.out.println("ID: " + courses.getId());
-                        System.out.println("Nome: " + courses.getName());
-                        System.out.println("Descrição: " + courses.getDescription());
-                        System.out.println("Carga horária: " + courses.getWorkload());
-                        System.out.println("------------------------");
-                    }
                     entityManager.getTransaction().commit();
-                    break;
-                default:
-                    System.out.println("Digite o nome do curso:");
-                    String searchName = scanner.next();
-
-                    entityManager.getTransaction().begin();
-
-                    List<Course> courses = entityManager
-                            .createQuery("SELECT searchCourse FROM Course searchCourse WHERE searchCourse.name = :name", Course.class)
-                            .setParameter("name", searchName)
-                            .getResultList();
-
-                    if (courses.isEmpty()) {
-                        System.out.println("Curso não encontrado.");
-                    } else {
-                        for (Course searchCourse : courses) {
-                            System.out.println("Nome: " + searchCourse.getName());
-                            System.out.println("Descrição: " + searchCourse.getDescription());
-                            System.out.println("Carga horária: " + searchCourse.getWorkload());
-                        }
+                    System.out.println("Curso cadastrado!");
+                } catch (Exception e) {
+                    if (entityManager.getTransaction().isActive()) {
+                        entityManager.getTransaction().rollback();
                     }
-                    entityManager.getTransaction().commit();
+                    System.out.println("Erro: Problema no banco.");
+                }
+
+                System.out.println("Curso cadastrado");
+            } else if (courseOption == 1) {
+                List<Course> courseList = entityManager
+                        .createQuery("SELECT courses FROM Course courses", Course.class).getResultList();
+
+                if (courseList.isEmpty()) {
+                    System.out.println("Nenhum curso cadastrado.");
+                } else {
+                    courseList.forEach(item ->
+                            System.out.printf("Nome: %s, Descrição: %s, Carga horária: %d\n", item.getName(), item.getDescription(), item.getWorkload()));
+                }
+            } else {
+                System.out.println("Digite o nome do curso:");
+                String searchName = scanner.next();
+
+                List<Course> courses = entityManager
+                        .createQuery("SELECT searchCourse FROM Course searchCourse WHERE searchCourse.name = :name", Course.class)
+                        .setParameter("name", searchName)
+                        .getResultList();
+
+                if (courses.isEmpty()) {
+                    System.out.println("Curso não encontrado.");
+                } else {
+                    courses.forEach(item ->
+                            System.out.printf("Nome: %s, Descrição: %s, Carga horária: %d\n", item.getName(), item.getDescription(), item.getWorkload()));
+                }
             }
-
-            entityManager.close();
-            entityManagerFactory.close();
         }
     }
 }
