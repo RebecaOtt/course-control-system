@@ -19,12 +19,9 @@ public class Main {
 
         int menu;
         do {
-            //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
-            if (entityManager.getTransaction().isActive()) {
-                entityManager.getTransaction().rollback();
-            }
+            closetransaction(entityManager);
 
-            System.out.println("1- Gerenciar alunos, 2- Gerenciar cursos, 3- Gerenciar matriculas, 4- Sair");
+            System.out.println("1- Gerenciar alunos, 2- Gerenciar cursos, 3- Gerenciar matriculas, 4- Relatório avançado, 5- Sair");
             menu = scanner.nextInt();
 
             if (menu < 1 || menu > 4) {
@@ -35,17 +32,18 @@ public class Main {
                 sueCourse(scanner, entityManager);
             } else if (menu == 3) {
                 sueRegistration(scanner, entityManager);
+            } else {
+                advancedReport(scanner, entityManager);
             }
-        } while (menu != 4);
+        } while (menu != 5);
 
+        System.out.println("Sistema encerrado");
         entityManager.close();
         entityManagerFactory.close();
-        System.out.println("Sistema encerrado");
 
     }
 
     public static void sueStudent(Scanner scanner, EntityManager entityManager) {
-        Student student = new Student();
         System.out.println("0- Cadastrar aluno, 1- Listar aluno, 2- Buscar aluno");
         int studentOption = scanner.nextInt();
         scanner.nextLine();
@@ -53,6 +51,7 @@ public class Main {
         if (studentOption < 0 || studentOption > 2) {
             System.out.println("Opção inválida");
         } else {
+            Student student = new Student();
             if (studentOption == 0) {
                 System.out.println("Digite seu nome:");
                 student.setName(scanner.nextLine());
@@ -71,10 +70,7 @@ public class Main {
                     System.out.println("Aluno cadastrado");
                 } catch (Exception e) {
                     System.out.println("Data inválida");
-
-                    if (entityManager.getTransaction().isActive()) {
-                        entityManager.getTransaction().rollback();
-                    }
+                    closetransaction(entityManager);
                 }
             } else if (studentOption == 1) {
                 List<Student> studentsList = entityManager
@@ -106,7 +102,6 @@ public class Main {
     }
 
     public static void sueCourse(Scanner scanner, EntityManager entityManager) {
-        Course course = new Course();
         System.out.println("0- Cadastrar curso, 1- Listar curso, 2- Buscar curso");
         int courseOption = scanner.nextInt();
         scanner.nextLine();
@@ -114,6 +109,7 @@ public class Main {
         if (courseOption < 0 || courseOption > 2) {
             System.out.println("Opção inválida");
         } else {
+            Course course = new Course();
             if (courseOption == 0) {
                 System.out.println("Digite o nome do seu curso:");
                 course.setName(scanner.nextLine());
@@ -131,10 +127,8 @@ public class Main {
                     entityManager.getTransaction().commit();
                     System.out.println("Curso cadastrado!");
                 } catch (Exception e) {
-                    if (entityManager.getTransaction().isActive()) {
-                        entityManager.getTransaction().rollback();
-                    }
                     System.out.println("Erro: Problema no banco.");
+                    closetransaction(entityManager);
                 }
             } else if (courseOption == 1) {
                 List<Course> courseList = entityManager
@@ -199,10 +193,7 @@ public class Main {
                         System.out.println("Matrícula cadastrado");
                     } catch (Exception e) {
                         System.out.println("Data inválida");
-
-                        if (entityManager.getTransaction().isActive()) {
-                            entityManager.getTransaction().rollback();
-                        }
+                        closetransaction(entityManager);
                     }
                 }
             } else {
@@ -218,6 +209,29 @@ public class Main {
                         System.out.printf("Nome: %s, Curso: %s\n", nameStudent, nameCourse);
                     });
                 }
+            }
+        }
+    }
+
+    public static void closetransaction (EntityManager entityManager) {
+        //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
+        if (entityManager.getTransaction().isActive()) {
+            entityManager.getTransaction().rollback();
+        }
+    }
+
+    public static void advancedReport(Scanner scanner, EntityManager entityManager) {
+        System.out.println("1- Total alunos matriculados");
+        int option = scanner.nextInt();
+        if (option == 1){
+            List<Object[]> enrolledStudents = entityManager
+                    .createQuery("SELECT regis.course.name, COUNT(regis) FROM Registration regis GROUP BY regis.course.name")
+                    .getResultList();
+
+            for (Object[] index : enrolledStudents) {
+                String nameCourse = (String) index[0];
+                Long amount =(Long) index[1];
+                System.out.println("Curso:" + nameCourse + "Total: " + amount);
             }
         }
     }
