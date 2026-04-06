@@ -19,7 +19,10 @@ public class Main {
 
         int menu;
         do {
-            closetransaction(entityManager);
+            //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
 
             System.out.println("1- Gerenciar alunos, 2- Gerenciar cursos, 3- Gerenciar matriculas, 4- Relatório avançado, 5- Sair");
             menu = scanner.nextInt();
@@ -61,16 +64,11 @@ public class Main {
 
                 System.out.println("Digite sua data de nascimento (dd/MM/yyyy):");
                 try {
-                    entityManager.getTransaction().begin();
-
                     student.setDateOfBirth(LocalDate.parse(scanner.next(), DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-                    entityManager.persist(student);
 
-                    entityManager.getTransaction().commit();
-                    System.out.println("Aluno cadastrado");
+                    executeTransaction(entityManager, student, "Aluno cadastrado!");
                 } catch (Exception e) {
                     System.out.println("Data inválida");
-                    closetransaction(entityManager);
                 }
             } else if (studentOption == 1) {
                 List<Student> studentsList = entityManager
@@ -120,16 +118,7 @@ public class Main {
                 System.out.println("Digite a carga horária do curso:");
                 course.setWorkload(scanner.nextInt());
 
-                try {
-                    entityManager.getTransaction().begin();
-                    entityManager.persist(course);
-
-                    entityManager.getTransaction().commit();
-                    System.out.println("Curso cadastrado!");
-                } catch (Exception e) {
-                    System.out.println("Erro: Problema no banco.");
-                    closetransaction(entityManager);
-                }
+                executeTransaction(entityManager, course, "Curso cadastrado!");
             } else if (courseOption == 1) {
                 List<Course> courseList = entityManager
                         .createQuery("SELECT courses FROM Course courses", Course.class).getResultList();
@@ -169,7 +158,6 @@ public class Main {
         } else {
             if (registationOption == 0) {
                 System.out.println("Digite o id do aluno:");
-
                 //.find vai ao banco buscar todas as informações daquele ID
                 Student studentId = entityManager.find(Student.class, scanner.nextLong());
 
@@ -181,19 +169,14 @@ public class Main {
                 } else {
                     System.out.println("Digite a data de matrícula:");
                     try {
-                        entityManager.getTransaction().begin();
-
                         Registration registration = new Registration();
                         registration.setStudent(studentId);
                         registration.setCourse(courseId);
                         registration.setRegistrationDate(LocalDate.parse(scanner.next(), DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-                        entityManager.persist(registration);
 
-                        entityManager.getTransaction().commit();
-                        System.out.println("Matrícula cadastrado");
+                        executeTransaction(entityManager, registration, "Matricula cadastrada!");
                     } catch (Exception e) {
                         System.out.println("Data inválida");
-                        closetransaction(entityManager);
                     }
                 }
             } else {
@@ -213,25 +196,48 @@ public class Main {
         }
     }
 
-    public static void closetransaction (EntityManager entityManager) {
-        //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
-        if (entityManager.getTransaction().isActive()) {
-            entityManager.getTransaction().rollback();
+    public static void executeTransaction(EntityManager entityManager, Object entity, String messageSuccess) {
+        try {
+            entityManager.getTransaction().begin();
+            entityManager.persist(entity);
+            entityManager.getTransaction().commit();
+            System.out.println(messageSuccess);
+        } catch (Exception e) {
+            System.err.println("Erro ao processar transação: " + e.getMessage());
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
         }
     }
 
     public static void advancedReport(Scanner scanner, EntityManager entityManager) {
-        System.out.println("1- Total alunos matriculados");
+        System.out.println("1- Total alunos matriculados 2- Ver média de idade dos alunos no curso");
         int option = scanner.nextInt();
-        if (option == 1){
-            List<Object[]> enrolledStudents = entityManager
-                    .createQuery("SELECT regis.course.name, COUNT(regis) FROM Registration regis GROUP BY regis.course.name")
-                    .getResultList();
+        if (option < 1 || option > 3) {
+            System.out.println("Opção invalida");
+        } else {
+            if (option == 1){
+                List<Object[]> enrolledStudents = entityManager
+                        .createQuery("SELECT regis.course.name, COUNT(regis) FROM Registration regis GROUP BY regis.course.name")
+                        .getResultList();
 
-            for (Object[] index : enrolledStudents) {
-                String nameCourse = (String) index[0];
-                Long amount =(Long) index[1];
-                System.out.println("Curso:" + nameCourse + "Total: " + amount);
+                enrolledStudents.forEach(item -> {
+                    String nameCourse = (String) item[0];
+                    Long amount =(Long) item[1];
+                    System.out.printf("Curso: %s | Quantidade de matrículas: %d\n", nameCourse, amount);
+                });
+            } else if (option == 2) {
+                String calculation = "SELECT regis.course.name, AVG(YEAR(CURRENT_DATE) - YEAR(regis.student.dateOfBirth)) FROM Registration regis GROUP BY regis.course.name";
+
+                List<Object[]> result = entityManager
+                        .createQuery(calculation)
+                        .getResultList();
+
+                result.forEach(item -> {
+                    String nameCourse = (String) item[0];
+                    Double averageAge = (Double) item[1];
+                    System.out.printf("Curso: %s | Média de idade: %.1f\n", nameCourse, averageAge);
+                });
             }
         }
     }
