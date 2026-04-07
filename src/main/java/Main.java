@@ -27,7 +27,7 @@ public class Main {
             System.out.println("1- Gerenciar alunos, 2- Gerenciar cursos, 3- Gerenciar matriculas, 4- Relatório avançado, 5- Sair");
             menu = scanner.nextInt();
 
-            if (menu < 1 || menu > 4) {
+            if (menu < 1 || menu > 5) {
                 System.out.println("Opção inválida");
             } else if (menu == 1) {
                 sueStudent(scanner, entityManager);
@@ -35,7 +35,7 @@ public class Main {
                 sueCourse(scanner, entityManager);
             } else if (menu == 3) {
                 sueRegistration(scanner, entityManager);
-            } else {
+            } else if (menu == 4) {
                 advancedReport(scanner, entityManager);
             }
         } while (menu != 5);
@@ -211,7 +211,7 @@ public class Main {
     }
 
     public static void advancedReport(Scanner scanner, EntityManager entityManager) {
-        System.out.println("1- Total alunos matriculados 2- Ver média de idade dos alunos no curso");
+        System.out.println("1- Total alunos matriculados 2- Ver média de idade dos alunos no curso 3- Quantidade de alunos matriculados nos últimos 30 dias");
         int option = scanner.nextInt();
         if (option < 1 || option > 3) {
             System.out.println("Opção invalida");
@@ -237,6 +237,16 @@ public class Main {
                     String nameCourse = (String) item[0];
                     Double averageAge = (Double) item[1];
                     System.out.printf("Curso: %s | Média de idade: %.1f\n", nameCourse, averageAge);
+                });
+            } else {
+                LocalDate deadline = LocalDate.now().minusDays(30);
+                String list = "SELECT regis.course.name, COUNT(regis.id) FROM Registration regis WHERE regis.registrationDate >= :deadline GROUP BY regis.course.name";
+                List<Object[]> studentsDeadline =  entityManager
+                        .createQuery(list).setParameter("deadline", deadline).getResultList();
+                studentsDeadline.forEach(item -> {
+                    String nameCourse = (String) item[0];
+                    Long amount =(Long) item[1];
+                    System.out.printf("Curso: %s | %d alunos \n", nameCourse, amount);
                 });
             }
         }
