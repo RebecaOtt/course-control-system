@@ -3,9 +3,6 @@ package model;
 import javax.persistence.*;
 import java.util.List;
 
-/*Classe curso que representa os cursos oferecidos, tendo dados como nome, descrição
-e sua carga horária
-* */
 @Entity
 public class Course {
     @Id
@@ -20,7 +17,6 @@ public class Course {
     private List<Registration> registrationList;
 
     //getters e setters
-
     public long getId() {
         return id;
     }

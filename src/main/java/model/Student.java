@@ -4,9 +4,6 @@ import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/*Classe que representa um aluno
-armazena informações sobre ele, como nome, email e data de nascimento
-* */
 @Entity
 public class Student {
     @Id
@@ -20,7 +17,6 @@ public class Student {
     @OneToMany(mappedBy = "student")
     private List<Registration> registrationList;
 
-    //Getters e Setters
     public long getId() {
         return id;
     }

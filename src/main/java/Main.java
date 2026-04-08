@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.Consumer;
 
 public class Main {
     public static void main(String[] args) {
@@ -19,7 +20,6 @@ public class Main {
 
         int menu;
         do {
-            //se alguma transação foi iniciada e não completa o rollback cancela a transação e volta do 0
             if (entityManager.getTransaction().isActive()) {
                 entityManager.getTransaction().rollback();
             }
@@ -43,7 +43,6 @@ public class Main {
         System.out.println("Sistema encerrado");
         entityManager.close();
         entityManagerFactory.close();
-
     }
 
     public static void sueStudent(Scanner scanner, EntityManager entityManager) {
@@ -74,12 +73,8 @@ public class Main {
                 List<Student> studentsList = entityManager
                         .createQuery("SELECT students FROM Student students", Student.class).getResultList();
 
-                if (studentsList.isEmpty()) {
-                    System.out.println("Nenhum aluno cadastrado.");
-                } else {
-                    studentsList.forEach(item ->
-                            System.out.printf("Id: %d, Nome: %s, Email: %s, Data de nascimento: %s\n", item.getId(), item.getName(), item.getEmail(), item.getDateOfBirth()));
-                }
+                checkAndPrint(studentsList, "Nenhum aluno cadastrado",item ->
+                        System.out.printf("Id: %d, Nome: %s, Email: %s, Data de nascimento: %s\n", item.getId(), item.getName(), item.getEmail(), item.getDateOfBirth()));
             } else {
                 System.out.println("Digite seu email:");
                 String searchEmail = scanner.next();
@@ -88,13 +83,8 @@ public class Main {
                         .createQuery("SELECT searchStudents FROM Student searchStudents WHERE searchStudents.email = :email", Student.class)
                         .setParameter("email", searchEmail)
                         .getResultList();
-
-                if (students.isEmpty()) {
-                    System.out.println("Aluno não encontrado.");
-                } else {
-                    students.forEach(item ->
-                            System.out.printf("Id: %d, Nome: %s, Email: %s, Data de nascimento: %s\n", item.getId(), item.getName(), item.getEmail(), item.getDateOfBirth()));
-                }
+                checkAndPrint(students, "Aluno não encontrado", item ->
+                        System.out.printf("Id: %d, Nome: %s, Email: %s, Data de nascimento: %s\n", item.getId(), item.getName(), item.getEmail(), item.getDateOfBirth()));
             }
         }
     }
@@ -123,12 +113,8 @@ public class Main {
                 List<Course> courseList = entityManager
                         .createQuery("SELECT courses FROM Course courses", Course.class).getResultList();
 
-                if (courseList.isEmpty()) {
-                    System.out.println("Nenhum curso cadastrado.");
-                } else {
-                    courseList.forEach(item ->
-                            System.out.printf("Id: %d, Nome: %s, Descrição: %s, Carga horária: %d\n",item.getId(), item.getName(), item.getDescription(), item.getWorkload()));
-                }
+                checkAndPrint(courseList, "Nenhum curso cadastrado", item ->
+                        System.out.printf("Id: %d, Nome: %s, Descrição: %s, Carga horária: %d\n",item.getId(), item.getName(), item.getDescription(), item.getWorkload()));
             } else {
                 System.out.println("Digite o nome do curso:");
                 String searchName = scanner.next();
@@ -137,13 +123,8 @@ public class Main {
                         .createQuery("SELECT searchCourse FROM Course searchCourse WHERE searchCourse.name = :name", Course.class)
                         .setParameter("name", searchName)
                         .getResultList();
-
-                if (courses.isEmpty()) {
-                    System.out.println("Curso não encontrado.");
-                } else {
-                    courses.forEach(item ->
-                            System.out.printf("Id: %d, Nome: %s, Descrição: %s, Carga horária: %d\n", item.getId(), item.getName(), item.getDescription(), item.getWorkload()));
-                }
+                checkAndPrint(courses, "Curso não encontrado", item ->
+                        System.out.printf("Id: %d, Nome: %s, Descrição: %s, Carga horária: %d\n", item.getId(), item.getName(), item.getDescription(), item.getWorkload()));
             }
         }
     }
@@ -158,7 +139,6 @@ public class Main {
         } else {
             if (registationOption == 0) {
                 System.out.println("Digite o id do aluno:");
-                //.find vai ao banco buscar todas as informações daquele ID
                 Student studentId = entityManager.find(Student.class, scanner.nextLong());
 
                 System.out.println("Digite o id do curso:");
@@ -182,16 +162,11 @@ public class Main {
             } else {
                 List<Registration> registrationList = entityManager
                         .createQuery("SELECT registration FROM Registration registration", Registration.class).getResultList();
-                if (registrationList.isEmpty()) {
-                    System.out.println("Nenhuma matrícula encontrada.");
-                } else {
-                    registrationList.forEach(item -> {
-                        String nameStudent = (item.getStudent() != null) ? item.getStudent().getName() : "Aluno Excluído";
-                        String nameCourse = (item.getCourse() != null) ? item.getCourse().getName() : "Curso Excluído";
-
-                        System.out.printf("Nome: %s, Curso: %s\n", nameStudent, nameCourse);
-                    });
-                }
+                checkAndPrint(registrationList, "Nenhuma matricula encontrada", item -> {
+                    String nameStudent = (item.getStudent() != null) ? item.getStudent().getName() : "Aluno Excluído";
+                    String nameCourse = (item.getCourse() != null) ? item.getCourse().getName() : "Curso Excluído";
+                    System.out.printf("Nome: %s, Curso: %s\n", nameStudent, nameCourse);
+                });
             }
         }
     }
@@ -210,44 +185,40 @@ public class Main {
         }
     }
 
+    public static <T> void checkAndPrint(List<T> list, String errorMessage, Consumer<T> sucessMessage) {
+        if (list.isEmpty()) {
+            System.out.println(errorMessage);
+        } else {
+            list.forEach(sucessMessage);
+        }
+    }
+
     public static void advancedReport(Scanner scanner, EntityManager entityManager) {
-        System.out.println("1- Total alunos matriculados 2- Ver média de idade dos alunos no curso 3- Quantidade de alunos matriculados nos últimos 30 dias");
+        System.out.println("1- Total alunos matriculados 2- Ver média de idade dos alunos por curso 3- Quantidade de alunos matriculados nos últimos 30 dias");
         int option = scanner.nextInt();
         if (option < 1 || option > 3) {
             System.out.println("Opção invalida");
         } else {
             if (option == 1){
                 List<Object[]> enrolledStudents = entityManager
-                        .createQuery("SELECT regis.course.name, COUNT(regis) FROM Registration regis GROUP BY regis.course.name")
+                        .createQuery("SELECT regis.course.name, COUNT(regis) FROM Registration regis GROUP BY regis.course.name", Object[].class)
                         .getResultList();
 
-                enrolledStudents.forEach(item -> {
-                    String nameCourse = (String) item[0];
-                    Long amount =(Long) item[1];
-                    System.out.printf("Curso: %s | Quantidade de matrículas: %d\n", nameCourse, amount);
-                });
+                enrolledStudents.forEach(item -> System.out.printf("Curso: %s | Quantidade de matrículas: %d\n", item));
             } else if (option == 2) {
                 String calculation = "SELECT regis.course.name, AVG(YEAR(CURRENT_DATE) - YEAR(regis.student.dateOfBirth)) FROM Registration regis GROUP BY regis.course.name";
 
                 List<Object[]> result = entityManager
-                        .createQuery(calculation)
+                        .createQuery(calculation, Object[].class)
                         .getResultList();
 
-                result.forEach(item -> {
-                    String nameCourse = (String) item[0];
-                    Double averageAge = (Double) item[1];
-                    System.out.printf("Curso: %s | Média de idade: %.1f\n", nameCourse, averageAge);
-                });
+                result.forEach(item -> System.out.printf("Curso: %s | Média de idade: %.1f\n", item));
             } else {
                 LocalDate deadline = LocalDate.now().minusDays(30);
                 String list = "SELECT regis.course.name, COUNT(regis.id) FROM Registration regis WHERE regis.registrationDate >= :deadline GROUP BY regis.course.name";
                 List<Object[]> studentsDeadline =  entityManager
-                        .createQuery(list).setParameter("deadline", deadline).getResultList();
-                studentsDeadline.forEach(item -> {
-                    String nameCourse = (String) item[0];
-                    Long amount =(Long) item[1];
-                    System.out.printf("Curso: %s | %d alunos \n", nameCourse, amount);
-                });
+                        .createQuery(list, Object[].class).setParameter("deadline", deadline).getResultList();
+                studentsDeadline.forEach(item -> System.out.printf("Curso: %s | %d alunos \n", item));
             }
         }
     }
